@@ -1,7 +1,9 @@
 from pgmpy.models import BayesianNetwork
+import time
+import random 
+import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
-import time
 
 start_time = time.time()
 
@@ -28,10 +30,6 @@ start_time = time.time()
 nx.draw(nx.DiGraph(cancer_model.edges()), with_labels=True)
 
 end_time = time.time()
-
-elapsed_time = end_time - start_time
-
-print(f"Time taken to draw the graph: {elapsed_time:.6f} seconds")
 
 plt.show()
 
@@ -69,3 +67,16 @@ cancer_model.add_cpds(cpd_poll, cpd_smoke, cpd_cancer, cpd_xray, cpd_dysp)
 
 # Checking if the cpds are valid for the model.
 cancer_model.check_model()
+
+# 1. Create small world modular networks (incidence matrix)
+# 2. Run inference algorithms from specification
+# 3. Make sure the results align with the report.
+# 4. Understand the algorithms.
+# 5. Perform compositional analysis from paper 2.  
+
+# 6. Might need to check variable elimination inference. Junction Tree, Loopy Belief propagation.
+
+# THEN let's begin testing new inference algorithms and parallelization techniques.
+
+# Let's create a small world modular network. 
+
