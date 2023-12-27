@@ -1,5 +1,7 @@
 import numpy as np
 
+# THOUGHT: Consider replacing CVSS with an alternative security risk measure, for reasons in my notes
+
 #Distribution of CVSS scores (OUTDATED)
 # 0-1   50      0.10
 # 1-2 	518 	0.70
