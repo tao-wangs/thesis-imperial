@@ -2,8 +2,10 @@ import numpy as np
 import numpy.random as rn
 import matplotlib.pyplot as plt
 import networkx as nx
-from pgmpy.models import BayesianNetwork, MarkovNetwork
-from utils import createANDtable, createORtable, drawRandomCVSS
+from pgmpy.models import BayesianNetwork
+from createANDtable import create_AND_table
+from createORtable import create_OR_table
+from drawRandomCVSS import draw_random_CVSS
 from pgmpy.factors.discrete import TabularCPD
 
 rn.seed(1)
@@ -70,13 +72,13 @@ s, t = np.where(DAG > 0)
 edges = list(zip(s, t))
 
 # Visualise the network
-G = nx.DiGraph()
-G.add_nodes_from(nodes)
-G.add_edges_from(edges)
+# G = nx.DiGraph()
+# G.add_nodes_from(nodes)
+# G.add_edges_from(edges)
 
-pos = nx.spring_layout(G)
-nx.draw(G, pos=pos, with_labels=True)
-plt.show()
+# pos = nx.spring_layout(G)
+# nx.draw(G, pos=pos, with_labels=True)
+# plt.show()
 
 # Initialise Bayesian Network
 model = BayesianNetwork(edges)
@@ -89,18 +91,90 @@ for i in range(N):
     npa = np.sum(DAG[:, i])
     r = rn.rand() > pAND
     
+    print(f'i = {i} has {npa} parents')
     #We draw the probability from the distribution of CVSS scores
-    probs = drawRandomCVSS(npa)
+    probs = draw_random_CVSS(npa)
     if r:
-        cpt = createORtable(probs)
+        print('Creating OR table')
+        cpt = create_OR_table(probs)
     else:
-        cpt = createANDtable(probs)
+        print('Creating AND table')
+        cpt = create_AND_table(probs)
     
-    cpd = TabularCPD(f'{i}', 2, cpt.T, evidence=np.where(DAG[:,i]), evidence_card=2*np.ones(npa))
+    if npa:
+        cpd = TabularCPD(i, 2, cpt.T, evidence=np.where(DAG[:,i])[0], evidence_card=2*np.ones(npa))
+    else:
+        cpd = TabularCPD(i, 2, cpt.T)
     #Insert the conditional probability table into the Bayesnet object
     model.add_cpds(cpd)
     print(cpd)
 
+# model.get_random_cpds()
+    
 # 3. Create Markov Network through pgmpy's moralization
+mrf = model.to_markov_model()
+
 # 4. Create Factor Graph through pgmpy's functions
+
+fg = mrf.to_factor_graph()
+
 # 5. Check the factors and try to derive relationship between them
+
+# -----------------------------------------------------------------------------
+# 6. Begin inference 
+
+import functools
+
+import jax
+# import matplotlib.pyplot as plt
+# import numpy as np
+
+############
+# Load PGMax
+from pgmax import fgraph, fgroup, infer, vgroup
+
+# Load data
+folder_name = "example_data/"
+params = np.load(open(folder_name + "rbm_mnist.npz", 'rb'), allow_pickle=True)
+bv = params["bv"]
+bh = params["bh"]
+W = params["W"]
+
+# Initialize factor graph
+hidden_variables = vgroup.NDVarArray(num_states=2, shape=bh.shape)
+visible_variables = vgroup.NDVarArray(num_states=2, shape=bv.shape)
+fg = fgraph.FactorGraph(variable_groups=[hidden_variables, visible_variables])
+
+# Create unary factors
+hidden_unaries = fgroup.EnumFactorGroup(
+    variables_for_factors=[[hidden_variables[ii]] for ii in range(bh.shape[0])],
+    factor_configs=np.arange(2)[:, None],
+    log_potentials=np.stack([np.zeros_like(bh), bh], axis=1),
+)
+visible_unaries = fgroup.EnumFactorGroup(
+    variables_for_factors=[[visible_variables[jj]] for jj in range(bv.shape[0])],
+    factor_configs=np.arange(2)[:, None],
+    log_potentials=np.stack([np.zeros_like(bv), bv], axis=1),
+)
+
+# Create pairwise factors
+log_potential_matrix = np.zeros(W.shape + (2, 2)).reshape((-1, 2, 2))
+log_potential_matrix[:, 1, 1] = W.ravel()
+
+variables_for_factors = [
+    [hidden_variables[ii], visible_variables[jj]]
+    for ii in range(bh.shape[0])
+    for jj in range(bv.shape[0])
+]
+pairwise_factors = fgroup.PairwiseFactorGroup(
+    variables_for_factors=variables_for_factors,
+    log_potential_matrix=log_potential_matrix,
+)
+
+# Add factors to the FactorGraph
+fg.add_factors([hidden_unaries, visible_unaries, pairwise_factors])
+
+bp = infer.build_inferer(fg.bp_state, backend="bp")
+bp_arrays = bp.run(bp.init(), num_iters=100, damping=0.5, temperature=1.0)
+beliefs = bp.get_beliefs(bp_arrays)
+marginals = infer.get_marginals(beliefs)

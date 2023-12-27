@@ -43,9 +43,10 @@ def draw_random_CVSS(n):
     
     return probs
 
-# Example usage:
-num_samples = 10  # Number of CVSS scores to generate
-result = draw_random_CVSS(num_samples)
+if __name__ == '__main__':
+    # Example usage:
+    num_samples = 10  # Number of CVSS scores to generate
+    result = draw_random_CVSS(num_samples)
 
-# Printing the generated CVSS scores
-print("Generated CVSS Scores:", result)
+    # Printing the generated CVSS scores
+    print("Generated CVSS Scores:", result)

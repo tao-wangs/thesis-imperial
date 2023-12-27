@@ -11,9 +11,10 @@ def create_AND_table(probs):
         
         return cpt.T
 
-# Example usage:
-probabilities = [0.7, 0.8]  # Example probabilities
-result_table = create_AND_table(probabilities)
+if __name__ == '__main__':
+    # Example usage:
+    probabilities = [0.7, 0.8]  # Example probabilities
+    result_table = create_AND_table(probabilities)
 
-# Printing the resulting table
-print(result_table)
+    # Printing the resulting table
+    print(result_table)

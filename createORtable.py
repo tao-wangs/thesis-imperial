@@ -2,7 +2,7 @@ import numpy as np
 from itertools import product
 
 def create_OR_table(probs):
-    if not probs:
+    if len(probs) == 0:
         return np.array([[0, 1]])
     else:
         npa = len(probs)
@@ -19,9 +19,10 @@ def create_OR_table(probs):
         
         return cpt.T
 
-# Example usage:
-probabilities = [0.3, 0.6, 0.8]  # Example probabilities
-result_table = create_OR_table(probabilities)
+if __name__ == '__main__':
+    # Example usage:
+    probabilities = [0.3, 0.6, 0.8]  # Example probabilities
+    result_table = create_OR_table(probabilities)
 
-# Printing the resulting table
-print(result_table)
+    # Printing the resulting table
+    print(result_table)
