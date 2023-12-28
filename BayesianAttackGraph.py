@@ -59,7 +59,7 @@ def plotConnectivityMatrix(A):
     plt.tight_layout()
     plt.show()
 
-N = 10 
+N = 10
 max_edges = 3
 
 # 1. Create DAG
@@ -116,7 +116,15 @@ mrf = model.to_markov_model()
 
 # 4. Create Factor Graph through pgmpy's functions
 
-fg = mrf.to_factor_graph()
+factors = mrf.get_factors()
+# print(len(factors))
+for f in factors:
+    print(f)
+    print(f.variables)
+    print(f.values)
+    # print(np.log(f.values))
+    print(f.values.flatten())
+
 
 # 5. Check the factors and try to derive relationship between them
 
@@ -124,57 +132,38 @@ fg = mrf.to_factor_graph()
 # 6. Begin inference 
 
 import functools
+import itertools
 
 import jax
-# import matplotlib.pyplot as plt
-# import numpy as np
+import matplotlib.pyplot as plt
+import numpy as np
 
-############
+###########
 # Load PGMax
-from pgmax import fgraph, fgroup, infer, vgroup
+from pgmax import fgraph, fgroup, infer, vgroup, factor
+from time import time 
 
-# Load data
-folder_name = "example_data/"
-params = np.load(open(folder_name + "rbm_mnist.npz", 'rb'), allow_pickle=True)
-bv = params["bv"]
-bh = params["bh"]
-W = params["W"]
+# My implementation
 
-# Initialize factor graph
-hidden_variables = vgroup.NDVarArray(num_states=2, shape=bh.shape)
-visible_variables = vgroup.NDVarArray(num_states=2, shape=bv.shape)
-fg = fgraph.FactorGraph(variable_groups=[hidden_variables, visible_variables])
+variables = vgroup.VarDict(num_states=2, variable_names=tuple(mrf.nodes))
+fg = fgraph.FactorGraph(variable_groups=[variables])
 
-# Create unary factors
-hidden_unaries = fgroup.EnumFactorGroup(
-    variables_for_factors=[[hidden_variables[ii]] for ii in range(bh.shape[0])],
-    factor_configs=np.arange(2)[:, None],
-    log_potentials=np.stack([np.zeros_like(bh), bh], axis=1),
-)
-visible_unaries = fgroup.EnumFactorGroup(
-    variables_for_factors=[[visible_variables[jj]] for jj in range(bv.shape[0])],
-    factor_configs=np.arange(2)[:, None],
-    log_potentials=np.stack([np.zeros_like(bv), bv], axis=1),
-)
+for f in mrf.get_factors():
+    npa = len(f.variables)
+    fact = factor.EnumFactor(
+        variables=[variables[i] for i in list(f.variables)],
+        factor_configs=np.array(list(itertools.product(np.arange(2), repeat=npa))),
+        log_potentials=np.log(f.values.flatten()),
+    )
 
-# Create pairwise factors
-log_potential_matrix = np.zeros(W.shape + (2, 2)).reshape((-1, 2, 2))
-log_potential_matrix[:, 1, 1] = W.ravel()
-
-variables_for_factors = [
-    [hidden_variables[ii], visible_variables[jj]]
-    for ii in range(bh.shape[0])
-    for jj in range(bv.shape[0])
-]
-pairwise_factors = fgroup.PairwiseFactorGroup(
-    variables_for_factors=variables_for_factors,
-    log_potential_matrix=log_potential_matrix,
-)
-
-# Add factors to the FactorGraph
-fg.add_factors([hidden_unaries, visible_unaries, pairwise_factors])
-
+    fg.add_factors(fact)
+    
 bp = infer.build_inferer(fg.bp_state, backend="bp")
+
+start_time=time()
 bp_arrays = bp.run(bp.init(), num_iters=100, damping=0.5, temperature=1.0)
 beliefs = bp.get_beliefs(bp_arrays)
 marginals = infer.get_marginals(beliefs)
+end_time=time()
+
+print(f'Time for LBP: {end_time-start_time} seconds')
