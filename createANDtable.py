@@ -1,7 +1,7 @@
 import numpy as np
 
 def create_AND_table(probs):
-    if not probs:
+    if len(probs) == 0:
         return np.array([[0, 1]])
     else:
         npa = len(probs)
