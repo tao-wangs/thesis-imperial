@@ -174,6 +174,7 @@ def RunLBP(fg, MAP=False):
 
     print(f'Time for Sum-Product LBP: {end_time-start_time} seconds')
 
+    return end_time-start_time
     # bp = infer.build_inferer(fg.bp_state, backend="bp")
     # start_time=time()
     # bp_arrays = bp.run(bp.init(), num_iters=100, damping=0.5, temperature=0.0)
