@@ -5,7 +5,7 @@ import time
 
 from pgmpy.inference import BeliefPropagation
 
-N = 200
+N = 500
 max_edges = 3
 
 nodes = np.arange(1, N)
@@ -13,12 +13,12 @@ times = np.zeros(len(nodes))
 
 times_jt = np.zeros(len(nodes))
 
-for n in range(2, N):
+for n in range(2, N, 50):
     print(f'Running LBP for {n} nodes')
     BAG = GenerateBAG(n, max_edges)
     MRF = ToMarkov(BAG)
     FG = CreateFactorGraph(MRF)
-    t = RunLBP(FG)
+    t = RunLBP(FG, MAP=True)
     times[n-1] = t
 
     print(f'Running JT for {n} nodes')
