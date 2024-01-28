@@ -1,12 +1,17 @@
 from BayesianAttackGraph import * 
 import numpy as np
 import matplotlib.pyplot as plt 
+import time 
+
+from pgmpy.inference import BeliefPropagation
 
 N = 200
 max_edges = 3
 
 nodes = np.arange(1, N)
 times = np.zeros(len(nodes))
+
+times_jt = np.zeros(len(nodes))
 
 for n in range(2, N):
     print(f'Running LBP for {n} nodes')
@@ -15,6 +20,17 @@ for n in range(2, N):
     FG = CreateFactorGraph(MRF)
     t = RunLBP(FG)
     times[n-1] = t
+
+    print(f'Running JT for {n} nodes')
+
+    start = time.time()
+    BP = BeliefPropagation(BAG)
+    print(BAG.nodes)
+    BP.query(variables=BAG.nodes, evidence=None)
+    end = time.time()
+    elapsed = end - start 
+    times_jt[n-1] = elapsed
+
 
 plt.title('Loopy Belief Propagation')
 plt.plot(nodes, times)
