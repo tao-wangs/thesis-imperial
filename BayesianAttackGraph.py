@@ -164,27 +164,26 @@ def CreateFactorGraph(mrf):
     return fg
 
 def RunLBP(fg, MAP=False):
-    if not MAP:
-      bp = infer.build_inferer(fg.bp_state, backend="bp")
-      start_time=time()
-      bp_arrays = bp.run(bp.init(), num_iters=100, damping=0.5, temperature=1.0)
-      beliefs = bp.get_beliefs(bp_arrays)
-      marginals = infer.get_marginals(beliefs)
-      end_time=time()
-      print(marginals)
-      print(f'Time for Sum-Product LBP: {end_time-start_time} seconds')
-    else: 
-      bp = infer.build_inferer(fg.bp_state, backend="bp")
-      start_time=time()
-      bp_arrays = bp.run(bp.init(), num_iters=100, damping=0.5, temperature=0.0)
-      beliefs = bp.get_beliefs(bp_arrays)
-      map_states = infer.decode_map_states(beliefs)
-      end_time=time()
-      print(map_states)
+    bp = infer.build_inferer(fg.bp_state, backend="bp")
+    start_time=time()
+    bp_arrays = bp.run(bp.init(), num_iters=100, damping=0.5, temperature=1.0)
+    beliefs = bp.get_beliefs(bp_arrays)
+    marginals = infer.get_marginals(beliefs)
+    end_time=time()
+    print(marginals)
 
-      print(f'Time for Max-Product LBP: {end_time-start_time} seconds')
+    print(f'Time for Sum-Product LBP: {end_time-start_time} seconds')
 
     return end_time-start_time
+    # bp = infer.build_inferer(fg.bp_state, backend="bp")
+    # start_time=time()
+    # bp_arrays = bp.run(bp.init(), num_iters=100, damping=0.5, temperature=0.0)
+    # beliefs = bp.get_beliefs(bp_arrays)
+    # map_states = infer.decode_map_states(beliefs)
+    # end_time=time()
+    # print(map_states)
+
+    # print(f'Time for Max-Product LBP: {end_time-start_time} seconds')
 
 
 
@@ -194,7 +193,8 @@ if __name__ == '__main__':
     max_edges = 3
 
     BAG = GenerateBAG(N, max_edges)
-    MRF = ToMarkov(BAG)
-    FG = CreateFactorGraph(MRF)
+    print(BAG)
+    # MRF = ToMarkov(BAG)
+    # FG = CreateFactorGraph(MRF)
     
     RunLBP(FG)

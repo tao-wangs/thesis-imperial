@@ -4,11 +4,12 @@ import numpy as np
 import pandas as pd
 import time 
 
-values = pd.DataFrame(np.random.randint(low=0, high=2, size=(1000, 4)),
-                      columns=['A', 'B', 'C', 'D'])
+# values = pd.DataFrame(np.random.randint(low=0, high=2, size=(10, 5)),
+                    #   columns=['A', 'B', 'C', 'D', 'E'])
+# print(values)
 
-model = BayesianNetwork([('A', 'B'), ('C', 'B'), ('C', 'D')])
-model.fit(values)
+model = BayesianNetwork([('A', 'B'), ('C', 'B'), ('C', 'D'), ('B', 'E')])
+# model.fit(values)
 # ve = VariableElimination(model)
 
 # start_time = time.time()
@@ -23,3 +24,4 @@ phi_query = jt.query(['A', 'B'])
 end_time = time.time()
 print(f'Time for Junction Tree Algorithm: {end_time - start_time} s')
 print(phi_query)
+
