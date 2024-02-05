@@ -91,14 +91,14 @@ def GenerateBAG(N, max_edges):
         npa = np.sum(DAG[:, i])
         r = rn.rand() > pAND
         
-        print(f'i = {i} has {npa} parents')
+        # print(f'i = {i} has {npa} parents')
         #We draw the probability from the distribution of CVSS scores
         probs = draw_random_CVSS(npa)
         if r:
-            print('Creating OR table')
+            # print('Creating OR table')
             cpt = create_OR_table(probs)
         else:
-            print('Creating AND table')
+            # print('Creating AND table')
             cpt = create_AND_table(probs)
         
         if npa:
@@ -107,7 +107,7 @@ def GenerateBAG(N, max_edges):
             cpd = TabularCPD(i, 2, cpt.T)
         #Insert the conditional probability table into the Bayesnet object
         model.add_cpds(cpd)
-        print(cpd)
+        # print(cpd)
     
     return model
 
@@ -121,11 +121,12 @@ def ToMarkov(model):
     factors = mrf.get_factors()
     # print(len(factors))
     for f in factors:
-        print(f)
-        print(f.variables)
-        print(f.values)
+        # # print(f)
+        # print(f.variables)
+        # print(f.values)
         # print(np.log(f.values))
-        print(f.values.flatten())
+        # print(f.values.flatten())
+        continue
 
     return mrf
 
@@ -164,26 +165,27 @@ def CreateFactorGraph(mrf):
     return fg
 
 def RunLBP(fg, MAP=False):
-    bp = infer.build_inferer(fg.bp_state, backend="bp")
-    start_time=time()
-    bp_arrays = bp.run(bp.init(), num_iters=100, damping=0.5, temperature=1.0)
-    beliefs = bp.get_beliefs(bp_arrays)
-    marginals = infer.get_marginals(beliefs)
-    end_time=time()
-    print(marginals)
+    if not MAP:
+        bp = infer.build_inferer(fg.bp_state, backend="bp")
+        start_time=time()
+        bp_arrays = bp.run(bp.init(), num_iters=100, damping=0.5, temperature=1.0)
+        beliefs = bp.get_beliefs(bp_arrays)
+        marginals = infer.get_marginals(beliefs)
+        end_time=time()
+        print(marginals)
+        print(f'Time for Sum-Product LBP: {end_time-start_time} seconds')
+    else: 
+        bp = infer.build_inferer(fg.bp_state, backend="bp")
+        start_time=time()
+        bp_arrays = bp.run(bp.init(), num_iters=100, damping=0.5, temperature=0.0)
+        beliefs = bp.get_beliefs(bp_arrays)
+        map_states = infer.decode_map_states(beliefs)
+        end_time=time()
+        print(map_states)
 
-    print(f'Time for Sum-Product LBP: {end_time-start_time} seconds')
+        print(f'Time for Max-Product LBP: {end_time-start_time} seconds')
 
     return end_time-start_time
-    # bp = infer.build_inferer(fg.bp_state, backend="bp")
-    # start_time=time()
-    # bp_arrays = bp.run(bp.init(), num_iters=100, damping=0.5, temperature=0.0)
-    # beliefs = bp.get_beliefs(bp_arrays)
-    # map_states = infer.decode_map_states(beliefs)
-    # end_time=time()
-    # print(map_states)
-
-    # print(f'Time for Max-Product LBP: {end_time-start_time} seconds')
 
 
 
@@ -194,7 +196,7 @@ if __name__ == '__main__':
 
     BAG = GenerateBAG(N, max_edges)
     print(BAG)
-    # MRF = ToMarkov(BAG)
-    # FG = CreateFactorGraph(MRF)
+    MRF = ToMarkov(BAG)
+    FG = CreateFactorGraph(MRF)
     
     RunLBP(FG)
