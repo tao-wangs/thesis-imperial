@@ -4,8 +4,8 @@ import time
 
 
 def Compute_Probabilities(BAG):
-    print(f'I HAVE BEEN CALLED')
-    print(f'hello {BAG}')
+    # print(f'I HAVE BEEN CALLED')
+    # print(f'hello {BAG}')
     MRF = ToMarkov(BAG)
     FG = CreateFactorGraph(MRF)
     t = RunLBP(FG)
@@ -57,6 +57,32 @@ def CompositionalAnalysis(SN, DAG, replica_mapping=None):
                 marginals = Compute_Probabilities(SN[i])
                 analysis_computed[i] = True
                 # Update_Children_Subnetworks(i, marginal, SN, DAG, replica_mapping)
+
+
+def ParallelCompositionalAnalysis(SN, DAG):
+    number_of_subnets = len(SN)
+
+    streams = [torch.cuda.Stream() for _ in range(number_of_subnets)]
+    computed_events = [torch.cuda.Event() for _ in range(number_of_subnets)]
+
+    for i in range(number_of_subnets):
+        # Select the stream for this subnet
+        s = streams[i]
+        # Operations for this subnet will be enqueued in the selected stream
+        with torch.cuda.stream(s):
+            # Wait for parent subnets to complete
+            parent_indices = np.where(DAG[:, i])[0].tolist()
+            for idx in parent_indices:
+                # Ensure this stream waits for the completion of parents
+                s.wait_event(computed_events[idx])
+            
+            # Perform the subnet analysis
+            BAG = SN[i]                   
+            MRF = ToMarkov(BAG)
+            FG = CreateFactorGraph(MRF) 
+            RunLBP(FG, MAP=True)
+            # Mark this subnet's analysis as complete
+            computed_events[i].record()
 
 
 # SN is an array of BAGs models for each subnetwork
@@ -165,21 +191,57 @@ def GenerateSubnetworks(SN, N, max_edges):
 # end = time.time()
 # print(f'Took {end-start} seconds for {N_SN} subnetworks')
 
-nodes = []
-times = []
- 
-for n in range(4, 50):
-    nodes.append(n * 50)
-    BAGS, DAG = GenerateGraph(n)
-    start = time.time()
-    CompositionalAnalysis(BAGS, DAG)
-    end = time.time()
-    print(f'Took {end-start} seconds for {n} subnetworks')
-    times.append(end-start)
 
 
-plt.title('Compositional Analysis')
-plt.plot(np.array(nodes), np.array(times), marker='x')
-plt.xlabel('Number of nodes')
-plt.ylabel('Inference time (s)')
-plt.savefig('data/Compositional-50-LBP-Sum.png')
+import torch
+
+if __name__ == '__main__':
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # for n in range(4, 50):
+    #     nodes.append(n * 50)
+    #     BAGS, DAG = GenerateGraph(n)
+    #     start = time.time()
+    #     ParallelCompositionalAnalysis(BAGS, DAG)
+    #     end = time.time()
+    #     print(f'Took {end-start} seconds for {n} subnetworks')
+    #     times.append(end-start)
+    
+
+    # plt.title('Compositional Analysis')
+    # plt.plot(np.array(nodes), np.array(times), marker='x')
+    # plt.xlabel('Number of nodes')
+    # plt.ylabel('Inference time (s)')
+    # plt.savefig('data/PARALLEL-Compositional-50-LBP-Sum.png')
+
+    nodes = []
+    times = []
+        
+    for n in range(4, 50):
+        nodes.append(n * 50)
+        BAGS, DAG = GenerateGraph(n)
+        start = time.time()
+        ParallelCompositionalAnalysis(BAGS, DAG)
+        end = time.time()
+        print(f'Took {end-start} seconds for {n} subnetworks')
+        times.append(end-start)
+
+    plt.title('Compositional Analysis')
+    plt.plot(np.array(nodes), np.array(times), marker='x')
+    plt.xlabel('Number of nodes')
+    plt.ylabel('Inference time (s)')
+    plt.savefig('data/PARALLEL-Compositional-50-LBP-MAX.png')
+
+    # Original Sequential
+
+    # for n in range(4, 50):
+    #     nodes.append(n * 50)
+    #     BAGS, DAG = GenerateGraph(n)
+    #     start = time.time()
+    #     CompositionalAnalysis(BAGS, DAG)
+    #     end = time.time()
+    #     print(f'Took {end-start} seconds for {n} subnetworks')
+    #     times.append(end-start)
+
+
+    
