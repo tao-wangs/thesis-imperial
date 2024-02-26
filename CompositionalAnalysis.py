@@ -65,7 +65,7 @@ def ParallelCompositionalAnalysis(SN, DAG):
     streams = [torch.cuda.Stream() for _ in range(number_of_subnets)]
     computed_events = [torch.cuda.Event() for _ in range(number_of_subnets)]
 
-    for i in range(number_of_subnets):
+    for i in range(number_of_subnets - 1, -1, -1):
         # Select the stream for this subnet
         s = streams[i]
         # Operations for this subnet will be enqueued in the selected stream
@@ -75,13 +75,15 @@ def ParallelCompositionalAnalysis(SN, DAG):
             for idx in parent_indices:
                 # Ensure this stream waits for the completion of parents
                 s.wait_event(computed_events[idx])
-            
+                
+            s.synchronize()
             # Perform the subnet analysis
             BAG = SN[i]                   
             MRF = ToMarkov(BAG)
             FG = CreateFactorGraph(MRF) 
             RunLBP(FG, MAP=True)
             # Mark this subnet's analysis as complete
+            print(f'Subnetwork {i} computed!')
             computed_events[i].record()
 
 
@@ -96,7 +98,7 @@ def ParallelCompositionalAnalysis(SN, DAG):
 # Subnetwork 4 has parents 1
 
 
-def GenerateGraph(SN, N=50):
+def GenerateGraph(SN, N=100):
     '''
     params:
 
@@ -198,6 +200,26 @@ import torch
 if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    nodes = []
+    times = []
+
+    for n in range(4, 35):
+        nodes.append(n * 100)
+        BAGS, DAG = GenerateGraph(n)
+        start = time.time()
+        ParallelCompositionalAnalysis(BAGS, DAG)
+        end = time.time()
+        print(f'Took {end-start} seconds for {n} subnetworks')
+        times.append(end-start)
+    
+
+    plt.title('Compositional Analysis')
+    plt.plot(np.array(nodes), np.array(times), marker='x')
+    plt.xlabel('Number of nodes')
+    plt.ylabel('Inference time (s)')
+    plt.savefig('data/PARALLEL-Compositional-100-LBP-Sum-5000.png')
+
+        
     # for n in range(4, 50):
     #     nodes.append(n * 50)
     #     BAGS, DAG = GenerateGraph(n)
@@ -206,31 +228,12 @@ if __name__ == '__main__':
     #     end = time.time()
     #     print(f'Took {end-start} seconds for {n} subnetworks')
     #     times.append(end-start)
-    
 
     # plt.title('Compositional Analysis')
     # plt.plot(np.array(nodes), np.array(times), marker='x')
     # plt.xlabel('Number of nodes')
     # plt.ylabel('Inference time (s)')
-    # plt.savefig('data/PARALLEL-Compositional-50-LBP-Sum.png')
-
-    nodes = []
-    times = []
-        
-    for n in range(4, 50):
-        nodes.append(n * 50)
-        BAGS, DAG = GenerateGraph(n)
-        start = time.time()
-        ParallelCompositionalAnalysis(BAGS, DAG)
-        end = time.time()
-        print(f'Took {end-start} seconds for {n} subnetworks')
-        times.append(end-start)
-
-    plt.title('Compositional Analysis')
-    plt.plot(np.array(nodes), np.array(times), marker='x')
-    plt.xlabel('Number of nodes')
-    plt.ylabel('Inference time (s)')
-    plt.savefig('data/PARALLEL-Compositional-50-LBP-MAX.png')
+    # plt.savefig('data/PARALLEL-Compositional-50-LBP-MAX.png')
 
     # Original Sequential
 
@@ -243,5 +246,7 @@ if __name__ == '__main__':
     #     print(f'Took {end-start} seconds for {n} subnetworks')
     #     times.append(end-start)
 
-
-    
+    # Test
+    # BAGS, DAG = GenerateGraph(10)
+    # print(DAG)
+    # ParallelCompositionalAnalysis(BAGS, DAG)
