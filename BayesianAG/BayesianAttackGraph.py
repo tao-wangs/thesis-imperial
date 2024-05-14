@@ -161,9 +161,14 @@ from time import time
 def CreateFactorGraph(mrf):
     variables = vgroup.VarDict(num_states=2, variable_names=tuple(mrf.nodes))
     fg = fgraph.FactorGraph(variable_groups=[variables])
+    print(variables)
+    print(variables.variable_names[0].dtype)
 
     for f in mrf.get_factors():
         npa = len(f.variables)
+        print(f.variables)
+        for i in list(f.variables):
+            print(variables[i])
         fact = factor.EnumFactor(
         variables=[variables[i] for i in list(f.variables)],
         factor_configs=np.array(list(itertools.product(np.arange(2), repeat=npa))),

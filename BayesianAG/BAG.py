@@ -24,8 +24,11 @@ def CreateBAG(N, max_edges):
     params:
     N: Number of nodes in the Bayesian Attack Graph
     max_edges: Maximum number of parents allowed per node in the Bayesian Attack Graph
+
+    returns:
+    DAG: Adjacency matrix representing the Bayesian Attack Graph
     """
-    
+
     # Initialise adjacency matrix
     DAG = np.zeros([N, N], dtype=int)
 
