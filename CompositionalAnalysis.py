@@ -1,5 +1,5 @@
 import numpy as np
-from BayesianAttackGraph import * 
+from BayesianAttackGraph import *
 import time 
 
 
@@ -59,7 +59,7 @@ def CompositionalAnalysis(SN, DAG, replica_mapping=None):
                 # Update_Children_Subnetworks(i, marginal, SN, DAG, replica_mapping)
 
 
-def ParallelCompositionalAnalysis(SN, DAG):
+def ParallelCompositionalAnalysis(SN, DAG, num_iterations):
     number_of_subnets = len(SN)
 
     streams = [torch.cuda.Stream() for _ in range(number_of_subnets)]
@@ -81,10 +81,11 @@ def ParallelCompositionalAnalysis(SN, DAG):
             BAG = SN[i]                   
             MRF = ToMarkov(BAG)
             FG = CreateFactorGraph(MRF) 
-            RunLBP(FG, MAP=True)
-            # Mark this subnet's analysis as complete
-            print(f'Subnetwork {i} computed!')
+            RunLBP(FG, num_iterations=num_iterations, MAP=True)
             computed_events[i].record()
+    
+    for s in streams:
+        s.synchronize()
 
 
 # SN is an array of BAGs models for each subnetwork
@@ -98,7 +99,7 @@ def ParallelCompositionalAnalysis(SN, DAG):
 # Subnetwork 4 has parents 1
 
 
-def GenerateGraph(SN, N=100):
+def GenerateGraph(SN, N, max_pa):
     '''
     params:
 
@@ -107,7 +108,7 @@ def GenerateGraph(SN, N=100):
     '''
     # High level representation 
     DAG = GenerateHighLevelRepresentation(SN, N_edges=3)
-    BAGS = GenerateSubnetworks(SN, N, max_edges=3)
+    BAGS = GenerateSubnetworks(SN, N, max_edges=max_pa)
     # replica_mapping = [] 
 
     # src, tgt = np.where(DAG > 0)
@@ -200,24 +201,31 @@ import torch
 if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    nodes = []
-    times = []
+    # nodes = []
+    # times = []
 
-    for n in range(4, 35):
-        nodes.append(n * 100)
-        BAGS, DAG = GenerateGraph(n)
-        start = time.time()
-        ParallelCompositionalAnalysis(BAGS, DAG)
-        end = time.time()
-        print(f'Took {end-start} seconds for {n} subnetworks')
-        times.append(end-start)
+    # for n in range(4, 35):
+    #     nodes.append(n * 100)
+    #     BAGS, DAG = GenerateGraph(n)
+    #     start = time.time()
+    #     ParallelCompositionalAnalysis(BAGS, DAG)
+    #     end = time.time()
+    #     print(f'Took {end-start} seconds for {n} subnetworks')
+    #     times.append(end-start)
+
+    # n = 3500
+    # BAGS, DAG = GenerateGraph(n)
+    # start = time.time()
+    # ParallelCompositionalAnalysis(BAGS, DAG)
+    # end = time.time()
+    # print(f'Took {end-start} seconds for {n} subnetworks')
+    # times.append(end-start)
     
-
-    plt.title('Compositional Analysis')
-    plt.plot(np.array(nodes), np.array(times), marker='x')
-    plt.xlabel('Number of nodes')
-    plt.ylabel('Inference time (s)')
-    plt.savefig('data/PARALLEL-Compositional-100-LBP-Sum-5000.png')
+    # plt.title('Compositional Analysis')
+    # plt.plot(np.array(nodes), np.array(times), marker='x')
+    # plt.xlabel('Number of nodes')
+    # plt.ylabel('Inference time (s)')
+    # plt.savefig('data/PARALLEL-Compositional-100-LBP-Sum-5000.png')
 
         
     # for n in range(4, 50):
@@ -250,3 +258,39 @@ if __name__ == '__main__':
     # BAGS, DAG = GenerateGraph(10)
     # print(DAG)
     # ParallelCompositionalAnalysis(BAGS, DAG)
+
+    import argparse 
+
+    parser = argparse.ArgumentParser(description='Compositional Analysis of Bayesian Attack Graphs.')
+
+    parser.add_argument('--output', type=str, help='Output file for the analysis.')
+    parser.add_argument('--num_subnets', type=int, help='Number of subnetworks in the network.')
+    parser.add_argument('--num_nodes', type=int, help='Number of nodes in each subnetwork.')
+    parser.add_argument('--num_iterations', type=int, help='Number of iterations for the analysis.')
+    parser.add_argument('--max_pa', type=int, help='Maximum number of parents per node.')
+
+    # Parse arguments
+    args = parser.parse_args()
+
+    output_path = args.output
+    num_subnets = args.num_subnets
+    num_nodes = args.num_nodes
+    num_iterations = args.num_iterations
+    max_pa = args.max_pa
+
+    # Run inference
+    BAGS, DAG = GenerateGraph(num_subnets, num_nodes, max_pa)
+    start = time.time()
+    ParallelCompositionalAnalysis(BAGS, DAG, num_iterations)
+    end = time.time()
+
+    # Save result to file
+    try:
+        inference_time = end - start 
+        print(f'Took {inference_time} seconds for {num_subnets} subnetworks with {num_nodes} nodes each.')
+        
+        with open(output_path, 'a') as f:
+            f.write(f'{inference_time}\n')
+        print(f'Inference time {inference_time} successfully written to {output_path}')
+    except Exception as e:
+        print(f'An error occurred: {e}')

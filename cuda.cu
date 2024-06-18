@@ -5,6 +5,14 @@ __global__ void myKernel(int node) {
     // Example kernel work
 }
 
+// Launch n amount of kernels in parallel
+for (int i = 0; i < numNodes; ++i) {
+    if (dependencyCounts[i] == 0) {
+        myKernel<<<1, 256, 0, streams[i]>>>(i);
+        cudaEventRecord(events[i], streams[i]);
+    }
+}
+
 int main() {
     // Example DAG represented with dependency counts and adjacency list
     std::vector<int> dependencyCounts = {0, 1, 1, 2}; // Number of dependencies for each node

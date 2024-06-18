@@ -102,7 +102,7 @@ flag = False
 
 bp = infer.BP(fg.bp_state, temperature=1.0)
 # bp_arrays = bp.init()
-bp_arrays = bp.init(evidence_updates={variables[4]: np.array([0, 100.])})
+bp_arrays = bp.init(evidence_updates={variables[4]: np.array([0, 1.])})
 bp_arrays = bp.run(bp_arrays, num_iters=100, damping=0.5)
 beliefs = bp.get_beliefs(bp_arrays)
 marginals = infer.get_marginals(beliefs)
